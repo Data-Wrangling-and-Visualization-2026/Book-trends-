@@ -11,7 +11,6 @@ import json
 import re
 from concurrent.futures import ThreadPoolExecutor
 
-# --- НАСТРОЙКИ ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s | %(message)s', datefmt='%H:%M:%S')
 
 DATASET_FILE = "goodreads_dataset.csv"
@@ -52,7 +51,6 @@ def csv_writer_worker():
             data_queue.task_done()
 
 
-# --- ПАРСЕР ---
 
 def fetch_book(book_id):
     url = f"https://www.goodreads.com/book/show/{book_id}"
@@ -69,17 +67,17 @@ def fetch_book(book_id):
 
         apollo = json.loads(match.group(1))['props']['pageProps']['apolloState']
 
-        # Находим основной объект книги
+      
         book_key = next((k for k, v in apollo.items() if k.startswith('Book:') and v.get('title')), None)
         if not book_key: return None
         book = apollo[book_key]
 
-        # Разрешаем объект details (там лежат страницы, формат, isbn)
+       
         details = book.get('details', {})
         if isinstance(details, dict) and details.get('__ref'):
             details = apollo.get(details['__ref'], {})
 
-        # Разрешаем объект Work (награды, персонажи, общая статистика)
+       
         work_ref = book.get('work', {}).get('__ref')
         work = apollo.get(work_ref, {}) if work_ref else {}
 
@@ -87,19 +85,17 @@ def fetch_book(book_id):
         if isinstance(work_details, dict) and work_details.get('__ref'):
             work_details = apollo.get(work_details['__ref'], {})
 
-        # Статистика (рейтинги)
         stats_data = work.get('stats', {})
         if isinstance(stats_data, dict) and stats_data.get('__ref'):
             stats_data = apollo.get(stats_data['__ref'], {})
 
-        # Обработка даты публикации
         pub_time = details.get('publicationTime') or work_details.get('publicationTime')
         pub_date_str = ""
         if pub_time:
-            # Превращаем миллисекунды в читаемую дату
+          
             pub_date_str = time.strftime('%B %d, %Y', time.gmtime(pub_time / 1000))
 
-        # Сборка итогового словаря
+    
         res = {
             'book_id': book_id,
             'title': book.get('title', ''),
@@ -126,13 +122,13 @@ def fetch_book(book_id):
             'language': details.get('language', {}).get('name', '') if isinstance(details.get('language'), dict) else ''
         }
 
-        # Автор
+    
         auth_node = book.get('primaryContributorEdge', {}).get('node', {})
         auth_ref = auth_node.get('__ref') if auth_node else None
         if auth_ref and auth_ref in apollo:
             res['author'] = apollo[auth_ref].get('name', 'Unknown')
 
-        # Серия
+        
         if book.get('bookSeries'):
             s_ref = book['bookSeries'][0].get('series', {}).get('__ref')
             if s_ref and s_ref in apollo:
@@ -148,7 +144,7 @@ def main():
     threading.Thread(target=csv_writer_worker, daemon=True).start()
     curr_id = 1
 
-    logging.info(f"🚀 Сбор данных запущен (ID: {curr_id})...")
+    logging.info(f" (ID: {curr_id})...")
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
         while True:
             batch = range(curr_id, curr_id + 10)
@@ -157,7 +153,7 @@ def main():
                 r = f.result()
                 if r:
                     data_queue.put(r)
-                    logging.info(f"✅ {r['book_id']}: {r['title'][:30]} | {r['pages']} p. | {r['format']}")
+                    logging.info(f" {r['book_id']}: {r['title'][:30]} | {r['pages']} p. | {r['format']}")
             curr_id += 10
 
 
